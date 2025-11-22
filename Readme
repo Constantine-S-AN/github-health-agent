@@ -1,11 +1,11 @@
 # GitHub Health Agent (Zypher + MCP)
 
-A small CLI agent built with [Zypher](https://zypher.corespeed.io) that analyzes the **“health”** of a GitHub repository.
+A small CLI agent built with [Zypher](https://zypher.corespeed.io) that analyzes the **health** of a GitHub repository.
 
 Given a repo like `owner/repo` (or a full GitHub URL), the agent:
 
-- Uses the **GitHub MCP server** to inspect issues / PRs / recent activity.
-- Computes a **0–100 health score** based on activity, backlog, and maintenance signals.
+- Uses the **GitHub MCP server** to inspect issues / PRs / recent activity.  
+- Computes a **0–100 health score** based on activity, backlog, and maintenance signals.  
 - Outputs a concise **Markdown report** with:
   - Health Score  
   - Indicators (activity, issues, releases)  
@@ -32,3 +32,160 @@ If you don’t have Deno yet:
 
 ```bash
 curl -fsSL https://deno.land/install.sh | sh
+````
+
+Restart your shell and verify:
+
+```bash
+deno --version
+```
+
+### 2. Clone this project
+
+```bash
+git clone https://github.com/Constantine-S-AN/github-health-agent.git
+cd github-health-agent
+```
+
+### 3. Install dependencies (if needed)
+
+The repo already includes `deno.json` and `deno.lock`, but for reference:
+
+```bash
+deno add jsr:@corespeed/zypher
+deno add npm:rxjs-for-await
+```
+
+### 4. Create `.env`
+
+Create a `.env` file in the project root:
+
+```env
+ANTHROPIC_API_KEY=your_anthropic_key_here
+GITHUB_TOKEN=your_github_pat_here
+GITHUB_ACCESS_TOKEN=your_github_pat_here
+GITHUB_PERSONAL_ACCESS_TOKEN=your_github_pat_here
+```
+
+Notes:
+
+* `ANTHROPIC_API_KEY` is used by the Zypher `AnthropicModelProvider`.
+* All three `GITHUB_*` vars can point to the **same** GitHub Personal Access Token (PAT).
+* The PAT only needs **read** access to the repos you want to inspect.
+  For public repos, the `public_repo` (or `repo`) scope is sufficient.
+
+> ⚠️ Never commit `.env` to Git. The `.gitignore` in this repo already ignores it.
+
+---
+
+## Usage
+
+Basic usage with `owner/repo`:
+
+```bash
+deno run -A --env-file=.env github-health-agent.ts owner/repo
+```
+
+Examples:
+
+```bash
+# Analyze the Zypher repo
+deno run -A --env-file=.env github-health-agent.ts corespeedio/zypher
+
+# Analyze a ScribeAR repo
+deno run -A --env-file=.env github-health-agent.ts scribear/ScribeAR.github.io
+```
+
+You can also pass a full GitHub URL; it will be normalized to `owner/repo`:
+
+```bash
+deno run -A --env-file=.env github-health-agent.ts https://github.com/scribear/ScribeAR.github.io
+```
+
+---
+
+## What the Agent Does
+
+For a given repository, the agent:
+
+1. Uses GitHub MCP tools (e.g. `github_list_issues`, others as needed) to fetch data.
+2. Gathers key signals such as:
+
+   * Number of open issues and pull requests
+   * Commit / PR activity in the last ~30 days
+   * Presence (or absence) of recent releases or tags
+   * Age and backlog of open issues
+3. Computes a **0–100 Health Score**, using a simple weighted scheme over:
+
+   * Recent activity
+   * Issue / PR management
+   * Release cadence
+   * Community / maintenance signals
+4. Produces a **Markdown report** with four sections:
+
+   * **Health Score** – one number + short summary
+   * **Indicators** – bullets for activity, backlog, maintenance
+   * **Risks** – potential problems (stale issues, UX debt, etc.)
+   * **Recommended Next Actions** – 3–5 concrete steps for maintainers
+
+The report is printed to stdout so it can be viewed directly in the terminal or redirected to a file.
+
+---
+
+## Example Output (Truncated)
+
+For:
+
+```bash
+deno run -A --env-file=.env github-health-agent.ts scribear/ScribeAR.github.io
+```
+
+Sample output (shortened):
+
+```text
+🔍 Analyzing GitHub repo: scribear/ScribeAR.github.io
+
+
+🛠  Using tool: github_list_issues
+
+💬 Agent report:
+
+## Health Score: 72/100
+The repository shows moderate health with active development but a noticeable backlog of open issues.
+
+## Indicators
+- Recent PRs merged in Oct–Nov 2025
+- 23 open issues, 200+ closed
+- Some issues dating back to 2023–2024 (backlog risk)
+
+## Risks
+- Long-lived feature requests and bug reports
+- Browser compatibility and mobile UI issues
+- No formal release tagging or versioning strategy
+
+## Recommended Next Actions
+1. Run an issue triage sprint to clean up stale items.
+2. Establish a simple release cadence with semantic versioning.
+3. Prioritize mobile responsiveness and browser compatibility.
+4. Turn old enhancement issues into scoped implementation tasks.
+5. Document a basic maintenance and release checklist.
+
+✅ GitHub health analysis completed!
+```
+
+---
+
+## Future Improvements
+
+Some ideas for extending this agent:
+
+* Inspect code-level signals (test coverage, static analysis, dependency updates).
+* Add support for analyzing **multiple repos in one run** and summarizing portfolio health.
+* Expose the agent as an HTTP API or UI dashboard instead of a pure CLI.
+
+---
+
+## Credits
+
+* Built with [Zypher](https://zypher.corespeed.io) and the GitHub MCP server.
+* Developed as a small vertical agent to explore **agent-native infrastructure** for developer tooling.
