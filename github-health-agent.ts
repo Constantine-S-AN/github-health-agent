@@ -1,12 +1,9 @@
 // github-health-agent.ts
 // GitHub Health Agent built with Zypher + GitHub MCP.
-// Usage:
-//   deno run -A --env-file=.env github-health-agent.ts owner/repo
-//   deno run -A --env-file=.env github-health-agent.ts https://github.com/owner/repo
-//
-// .env needs at least:
-//   ANTHROPIC_API_KEY=...
-//   GITHUB_TOKEN=...
+// - As CLI:
+//     deno run -A --env-file=.env github-health-agent.ts owner/repo
+// - As library:
+//     import { runGitHubHealthReport } from "./github-health-agent.ts";
 
 import {
   ZypherAgent,
@@ -31,7 +28,7 @@ const getRequiredEnv = (key: string): string => {
  * - Accepts either "owner/repo" or a full GitHub URL.
  * - Falls back to a default repo if nothing is provided.
  */
-const normalizeRepo = (input?: string): string => {
+export const normalizeRepo = (input?: string): string => {
   if (!input) return "corespeedio/zypher";
 
   // e.g. https://github.com/owner/repo[...]
@@ -51,12 +48,10 @@ const normalizeRepo = (input?: string): string => {
   return input;
 };
 
-const repo = normalizeRepo(Deno.args[0]);
+// --- Zypher setup (shared by CLI + web server) ---
 
-// 1. Initialize Zypher context (same pattern as Quick Start).
 const zypherContext = await createZypherContext(Deno.cwd());
 
-// 2. Create ZypherAgent with Anthropic as the model provider.
 const agent = new ZypherAgent(
   zypherContext,
   new AnthropicModelProvider({
@@ -64,7 +59,7 @@ const agent = new ZypherAgent(
   }),
 );
 
-// 3. Register GitHub MCP server (for issues / PR / commits / etc.).
+// Register GitHub MCP server once.
 await agent.mcp.registerServer({
   id: "github",
   type: "command",
@@ -80,8 +75,10 @@ await agent.mcp.registerServer({
   },
 });
 
-// 4. Define the GitHub health task (what the agent should do).
-const task = `
+/**
+ * Build the task prompt for a given repository.
+ */
+const buildTask = (repo: string): string => `
 You are a GitHub repository health assistant.
 
 Target repository: "${repo}".
@@ -115,42 +112,59 @@ versus your own reasoning.
 Keep the final report under 400 words.
 `;
 
-// 5. Run the task using Claude Sonnet.
-const event$ = agent.runTask(task, "claude-sonnet-4-20250514");
+/**
+ * Core function: run the GitHub health analysis and return the Markdown report.
+ * This is used by both the CLI and the web server.
+ */
+export async function runGitHubHealthReport(repoInput: string): Promise<string> {
+  const repo = normalizeRepo(repoInput);
+  const task = buildTask(repo);
 
-console.log(`🔍 Analyzing GitHub repo: ${repo}\n`);
+  const event$ = agent.runTask(task, "claude-sonnet-4-20250514");
 
-let finalText = "";
+  let finalText = "";
 
-// 6. Stream task events and accumulate the final text response.
-for await (const event of eachValueFrom(event$)) {
-  switch (event.type) {
-    case "text": {
-      // TaskTextEvent: content is a string chunk.
-      finalText += event.content;
-      break;
-    }
-    case "tool_use": {
-      // TaskToolUseEvent: we log which tool is being used.
-      console.log(`\n🛠  Using tool: ${event.toolName}`);
-      break;
-    }
-    case "tool_use_input": {
-      // TaskToolUseInputEvent: can be used for debugging if needed.
-      // console.log(`   partial input: ${event.partialInput}`);
-      break;
-    }
-    case "message": {
-      // TaskMessageEvent: full message / final message, usually no need to log here.
-      break;
-    }
-    default: {
-      // Other events: history changes, cancellation, etc. We ignore them for now.
-      break;
+  for await (const event of eachValueFrom(event$)) {
+    switch (event.type) {
+      case "text": {
+        // TaskTextEvent: content is a string chunk.
+        finalText += event.content;
+        break;
+      }
+      case "tool_use": {
+        // Log which tool is being used (visible in CLI / server logs).
+        console.log(`\n🛠  Using tool: ${event.toolName}`);
+        break;
+      }
+      case "tool_use_input": {
+        // Optional debug info.
+        break;
+      }
+      case "message": {
+        // Full message/final message; no need to log here.
+        break;
+      }
+      default: {
+        // Ignore other events.
+        break;
+      }
     }
   }
+
+  return finalText.trim();
 }
 
-console.log("\n💬 Agent report:\n");
-console.log(finalText.trim());
-console.log("\n✅ GitHub health analysis completed!");
+// --- CLI entrypoint ---
+
+if (import.meta.main) {
+  const repoArg = Deno.args[0];
+  const repo = normalizeRepo(repoArg);
+
+  console.log(`🔍 Analyzing GitHub repo: ${repo}\n`);
+
+  const report = await runGitHubHealthReport(repo);
+
+  console.log("\n💬 Agent report:\n");
+  console.log(report);
+  console.log("\n✅ GitHub health analysis completed!");
+}

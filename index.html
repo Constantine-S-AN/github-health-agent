@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>GitHub Health Agent (Zypher + MCP)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 1.5rem;
+      background: #0b0c10;
+      color: #e5e5e5;
+    }
+    h1 {
+      margin-top: 0;
+      font-size: 1.6rem;
+    }
+    .card {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 1.5rem;
+      background: #151820;
+      border-radius: 16px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    }
+    label {
+      display: block;
+      font-size: 0.9rem;
+      margin-bottom: 0.25rem;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 0.6rem 0.8rem;
+      border-radius: 999px;
+      border: 1px solid #333a4a;
+      background: #0f1118;
+      color: #e5e5e5;
+      outline: none;
+    }
+    input[type="text"]:focus {
+      border-color: #4f9cff;
+    }
+    button {
+      margin-top: 0.8rem;
+      padding: 0.5rem 1rem;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      background: #4f9cff;
+      color: #0b0c10;
+      font-weight: 600;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+    #status {
+      margin-top: 0.75rem;
+      font-size: 0.85rem;
+      color: #a0aec0;
+    }
+    pre {
+      margin-top: 1rem;
+      padding: 1rem;
+      border-radius: 12px;
+      background: #0f1118;
+      color: #e5e5e5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 60vh;
+      overflow: auto;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>GitHub Health Agent (Zypher + MCP)</h1>
+    <p style="font-size:0.9rem; color:#a0aec0;">
+      Enter a GitHub repository (<code>owner/repo</code> or full URL), and this agent will
+      call the GitHub MCP server to compute a health score and generate a Markdown report.
+    </p>
+
+    <label for="repo-input">Repository</label>
+    <input
+      id="repo-input"
+      type="text"
+      placeholder="e.g. scribear/ScribeAR.github.io or https://github.com/scribear/ScribeAR.github.io"
+    />
+    <button id="analyze-btn">Analyze</button>
+
+    <div id="status"></div>
+    <pre id="output"></pre>
+  </div>
+
+  <script>
+    const input = document.getElementById("repo-input");
+    const button = document.getElementById("analyze-btn");
+    const statusEl = document.getElementById("status");
+    const output = document.getElementById("output");
+
+    async function analyze() {
+      const repo = input.value.trim();
+      if (!repo) {
+        alert("Please enter a GitHub repo (owner/repo or URL).");
+        return;
+      }
+
+      button.disabled = true;
+      statusEl.textContent = "Analyzing...";
+      output.textContent = "";
+
+      try {
+        const res = await fetch("/api/health?repo=" + encodeURIComponent(repo));
+        if (!res.ok) {
+          let msg = "Request failed with status " + res.status;
+          try {
+            const err = await res.json();
+            if (err && err.error) msg = err.error;
+          } catch {}
+          throw new Error(msg);
+        }
+        const data = await res.json();
+        statusEl.textContent = "Done. Repo: " + data.repo;
+        output.textContent = data.report;
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = "Error: " + err.message;
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    button.addEventListener("click", analyze);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") analyze();
+    });
+  </script>
+</body>
+</html>
