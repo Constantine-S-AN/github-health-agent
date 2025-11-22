@@ -1,16 +1,27 @@
 # GitHub Health Agent (Zypher + MCP)
 
-A small CLI agent built with [Zypher](https://zypher.corespeed.io) that analyzes the **health** of a GitHub repository.
+A small **GitHub repository health assistant** built with [Zypher](https://zypher.corespeed.io).
 
-Given a repo like `owner/repo` (or a full GitHub URL), the agent:
+The agent can be used in two ways:
 
-- Uses the **GitHub MCP server** to inspect issues / PRs / recent activity.  
-- Computes a **0–100 health score** based on activity, backlog, and maintenance signals.  
-- Outputs a concise **Markdown report** with:
-  - Health Score  
-  - Indicators (activity, issues, releases)  
-  - Risks  
-  - Recommended Next Actions  
+- As a **CLI tool**: pass a GitHub repo, get back a Markdown health report.
+- As a **web app**: open a local web page, type a repo, and see the report in your browser.
+
+Under the hood it uses the **GitHub MCP server** and **Anthropic Claude** via Zypher to inspect a repo’s issues / activity and generate a **0–100 health score** plus concrete maintenance recommendations.
+
+---
+
+## Features
+
+- 🔍 Accepts `owner/repo` or a full GitHub URL  
+- 🧰 Uses the `github-mcp` server to query issues, PRs, and activity  
+- 🧮 Computes a 0–100 **Health Score** based on activity, backlog, and maintenance signals  
+- 🧾 Outputs a structured **Markdown report** with:
+  - Health Score
+  - Indicators (activity, issues, releases)
+  - Risks
+  - Recommended Next Actions
+- 🖥️ Simple web UI (Deno HTTP server + static HTML) on `http://localhost:8000`
 
 ---
 
@@ -18,9 +29,11 @@ Given a repo like `owner/repo` (or a full GitHub URL), the agent:
 
 - **Runtime:** [Deno 2.x](https://deno.land/)  
 - **Agent framework:** [`@corespeed/zypher`](https://zypher.corespeed.io)  
-- **LLM provider:** Anthropic Claude (via `AnthropicModelProvider`)  
-- **Tools:** GitHub MCP server (`github-mcp`)  
+- **LLM provider:** Anthropic Claude (`AnthropicModelProvider`)  
+- **MCP tools:** GitHub MCP server (`github-mcp`)  
 - **Event streaming:** `rxjs-for-await`  
+- **Web server:** Deno `std/http/server.ts`  
+- **Frontend:** Single `index.html` (vanilla JS + minimal CSS)
 
 ---
 
@@ -47,16 +60,17 @@ git clone https://github.com/Constantine-S-AN/github-health-agent.git
 cd github-health-agent
 ```
 
-### 3. Install dependencies (if needed)
+### 3. Dependencies
 
-The repo already includes `deno.json` and `deno.lock`, but for reference:
+Deno will pull dependencies automatically from `deno.json` / imports.
+For reference, this project uses:
 
 ```bash
 deno add jsr:@corespeed/zypher
 deno add npm:rxjs-for-await
 ```
 
-### 4. Create `.env`
+### 4. Environment variables
 
 Create a `.env` file in the project root:
 
@@ -74,13 +88,15 @@ Notes:
 * The PAT only needs **read** access to the repos you want to inspect.
   For public repos, the `public_repo` (or `repo`) scope is sufficient.
 
-> ⚠️ Never commit `.env` to Git. The `.gitignore` in this repo already ignores it.
+> ⚠️ **Important:** `.env` is in `.gitignore` and should never be committed.
 
 ---
 
-## Usage
+## Usage – CLI
 
-Basic usage with `owner/repo`:
+You can still run the agent directly from the command line.
+
+### Basic CLI usage
 
 ```bash
 deno run -A --env-file=.env github-health-agent.ts owner/repo
@@ -96,10 +112,64 @@ deno run -A --env-file=.env github-health-agent.ts corespeedio/zypher
 deno run -A --env-file=.env github-health-agent.ts scribear/ScribeAR.github.io
 ```
 
-You can also pass a full GitHub URL; it will be normalized to `owner/repo`:
+### Using full GitHub URLs
+
+The agent normalizes URLs to `owner/repo`, so this also works:
 
 ```bash
 deno run -A --env-file=.env github-health-agent.ts https://github.com/scribear/ScribeAR.github.io
+```
+
+---
+
+## Usage – Web App
+
+The project also includes a tiny web front end that calls the same agent through a JSON API.
+
+### Start the web server
+
+```bash
+deno run -A --env-file=.env web-server.ts
+```
+
+You should see:
+
+```text
+🌐 Web server running at http://localhost:8000
+```
+
+### Open the UI
+
+1. Open your browser and go to: [http://localhost:8000](http://localhost:8000)
+2. Enter a repo (e.g. `scribear/ScribeAR.github.io` or a full URL).
+3. Click **Analyze** or press **Enter**.
+4. A Markdown report will appear in the bottom panel.
+
+---
+
+## HTTP API
+
+The web server exposes a simple JSON API:
+
+**Endpoint**
+
+```http
+GET /api/health?repo=<owner/repo or URL>
+```
+
+**Response**
+
+```json
+{
+  "repo": "normalized/owner/repo",
+  "report": "<markdown health report>"
+}
+```
+
+**Example**
+
+```bash
+curl "http://localhost:8000/api/health?repo=scribear/ScribeAR.github.io"
 ```
 
 ---
@@ -108,7 +178,7 @@ deno run -A --env-file=.env github-health-agent.ts https://github.com/scribear/S
 
 For a given repository, the agent:
 
-1. Uses GitHub MCP tools (e.g. `github_list_issues`, others as needed) to fetch data.
+1. Uses GitHub MCP tools (e.g. `github_list_issues`, and others as needed) to fetch data.
 2. Gathers key signals such as:
 
    * Number of open issues and pull requests
@@ -128,7 +198,7 @@ For a given repository, the agent:
    * **Risks** – potential problems (stale issues, UX debt, etc.)
    * **Recommended Next Actions** – 3–5 concrete steps for maintainers
 
-The report is printed to stdout so it can be viewed directly in the terminal or redirected to a file.
+The report is printed to stdout in CLI mode and returned as `report` in the web/API mode.
 
 ---
 
@@ -179,13 +249,14 @@ The repository shows moderate health with active development but a noticeable ba
 
 Some ideas for extending this agent:
 
-* Inspect code-level signals (test coverage, static analysis, dependency updates).
-* Add support for analyzing **multiple repos in one run** and summarizing portfolio health.
-* Expose the agent as an HTTP API or UI dashboard instead of a pure CLI.
+* Inspect code-level signals (test coverage, static analysis, dependency freshness).
+* Analyze **multiple repos in one run** and summarize portfolio health.
+* Add a richer front end (charts, trend lines, filters).
+* Expose the agent as a hosted service or GitHub App for automated checks.
 
 ---
 
 ## Credits
 
 * Built with [Zypher](https://zypher.corespeed.io) and the GitHub MCP server.
-* Developed as a small vertical agent to explore **agent-native infrastructure** for developer tooling.
+* Developed as a small vertical agent to explore **agent-native infrastructure** for developer tooling, with both CLI and web entrypoints.
