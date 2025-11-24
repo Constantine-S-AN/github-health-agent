@@ -1,4 +1,4 @@
-# GitHub Health Agent (Zypher + MCP)
+# GitHub Health Agent (Zypher + MCP + MIRIX)
 
 A small **GitHub repository health assistant** built with [Zypher](https://zypher.corespeed.io).
 
@@ -7,7 +7,7 @@ The agent can be used in two ways:
 - As a **CLI tool**: pass a GitHub repo, get back a Markdown health report.
 - As a **web app**: open a local web page, type a repo, and see the report in your browser.
 
-Under the hood it uses the **GitHub MCP server** and **Anthropic Claude** via Zypher to inspect a repo’s issues / activity and generate a **0–100 health score** plus concrete maintenance recommendations.
+Under the hood it uses the **GitHub MCP server** and **Anthropic Claude** via Zypher to inspect a repo’s issues / activity and generate a **0–100 health score** plus concrete maintenance recommendations. It can also stream / store run history via a MIRIX memory service so each run has long-term context.
 
 ---
 
@@ -22,6 +22,10 @@ Under the hood it uses the **GitHub MCP server** and **Anthropic Claude** via Zy
   - Risks
   - Recommended Next Actions
 - 🖥️ Simple web UI (Deno HTTP server + static HTML) on `http://localhost:8000`
+- 🧠 Optional MIRIX backing store for run history + prompts
+- 🔀 Modes: `plan` (read-only) or `auto` (janitor-style write actions when allowed)
+- 🎯 Scenarios: `health`, `backlog`, `release`, `custom`, `chat`
+- ⏰ Daemon mode with cron to re-run daily
 
 ---
 
@@ -79,6 +83,7 @@ ANTHROPIC_API_KEY=your_anthropic_key_here
 GITHUB_TOKEN=your_github_pat_here
 GITHUB_ACCESS_TOKEN=your_github_pat_here
 GITHUB_PERSONAL_ACCESS_TOKEN=your_github_pat_here
+MIRIX_URL=http://127.0.0.1:8000           # optional; only if using the MIRIX memory service
 ```
 
 Notes:
@@ -87,8 +92,21 @@ Notes:
 * All three `GITHUB_*` vars can point to the **same** GitHub Personal Access Token (PAT).
 * The PAT only needs **read** access to the repos you want to inspect.
   For public repos, the `public_repo` (or `repo`) scope is sufficient.
+* `MIRIX_URL` is optional; if unset, the agent falls back to local JSON snapshots in `./memory/`.
 
 > ⚠️ **Important:** `.env` is in `.gitignore` and should never be committed.
+
+### 5. (Optional) Run the MIRIX memory service
+
+If you want cloud-like episodic memory across runs, start the included Python FastAPI shim:
+
+```bash
+pip install fastapi uvicorn python-dotenv mirix
+uvicorn mirix_service:app --port 8000 --reload
+```
+
+Then set `MIRIX_URL` to that endpoint (defaults to `http://127.0.0.1:8000`).
+Local run summaries are also written to `./memory/` (kept out of git); you can clear it safely.
 
 ---
 
@@ -98,18 +116,25 @@ You can still run the agent directly from the command line.
 
 ### Basic CLI usage
 
-```bash
-deno run -A --env-file=.env github-health-agent.ts owner/repo
+```
+deno run -A --env-file=.env github-health-agent.ts <owner/repo|url> \
+  [--mode=plan|auto] \
+  [--scenario=health|backlog|release|custom|chat] \
+  [--task="high priority instruction"] \
+  [--daemon]   # requires --unstable-cron
 ```
 
 Examples:
 
 ```bash
-# Analyze the Zypher repo
-deno run -A --env-file=.env github-health-agent.ts corespeedio/zypher
+# Analyze the Zypher repo in plan mode
+deno run -A --env-file=.env github-health-agent.ts corespeedio/zypher --mode=plan
 
-# Analyze a ScribeAR repo
-deno run -A --env-file=.env github-health-agent.ts scribear/ScribeAR.github.io
+# Backlog cleanup scenario in auto mode (write actions allowed)
+deno run -A --env-file=.env github-health-agent.ts scribear/ScribeAR.github.io --mode=auto --scenario=backlog
+
+# Daily daemon
+deno run -A --unstable-cron --env-file=.env github-health-agent.ts scribear/ScribeAR.github.io --mode=auto --daemon
 ```
 
 ### Using full GitHub URLs
@@ -142,8 +167,9 @@ You should see:
 
 1. Open your browser and go to: [http://localhost:8000](http://localhost:8000)
 2. Enter a repo (e.g. `scribear/ScribeAR.github.io` or a full URL).
-3. Click **Analyze** or press **Enter**.
-4. A Markdown report will appear in the bottom panel.
+3. Pick a scenario and mode (plan/auto), optionally add a task.
+4. Click **Analyze** or press **Enter**.
+5. A Markdown report + Mermaid charts will appear in the right pane, and the background orb will reflect the health score.
 
 ---
 
@@ -154,7 +180,7 @@ The web server exposes a simple JSON API:
 **Endpoint**
 
 ```http
-GET /api/health?repo=<owner/repo or URL>
+GET /api/health?repo=<owner/repo or URL>&mode=plan|auto&scenario=health|backlog|release|custom|chat&task=...
 ```
 
 **Response**
