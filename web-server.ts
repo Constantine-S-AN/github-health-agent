@@ -1,10 +1,11 @@
 // web-server.ts
-// Simple HTTP server that exposes the GitHub Health Agent as a web API + static HTML.
+// HTTP server exposing the GitHub Health Agent as a web API + static HTML.
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import {
   runGitHubHealthReport,
-  normalizeRepo,
+  type HealthMode,
+  type Scenario,
 } from "./github-health-agent.ts";
 
 const PORT = 8000;
@@ -12,17 +13,27 @@ const PORT = 8000;
 const handler = async (req: Request): Promise<Response> => {
   const url = new URL(req.url);
 
-  // Serve the front-end page.
   if (url.pathname === "/") {
-    const html = await Deno.readTextFile("index.html");
-    return new Response(html, {
-      headers: { "Content-Type": "text/html; charset=UTF-8" },
-    });
+    try {
+      const html = await Deno.readTextFile(
+        new URL("./index.html", import.meta.url),
+      );
+      return new Response(html, {
+        status: 200,
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      });
+    } catch (err) {
+      console.error("Failed to read index.html:", err);
+      return new Response("index.html not found", { status: 500 });
+    }
   }
 
-  // JSON API: /api/health?repo=owner/repo_or_url
   if (url.pathname === "/api/health") {
-    const repoParam = url.searchParams.get("repo") ?? "";
+    const repoParam = url.searchParams.get("repo");
+    const modeParam = url.searchParams.get("mode") ?? "plan";
+    const taskParam = url.searchParams.get("task") ?? "";
+    const scenarioParam = url.searchParams.get("scenario") ?? "health";
+
     if (!repoParam) {
       return new Response(
         JSON.stringify({ error: "Missing 'repo' query parameter" }),
@@ -30,17 +41,46 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    let mode: HealthMode = "plan";
+    if (modeParam === "auto") mode = "auto";
+
+    let scenario: Scenario = "health";
+    if (
+      scenarioParam === "health" || scenarioParam === "backlog" ||
+      scenarioParam === "release" || scenarioParam === "custom" ||
+      scenarioParam === "chat"
+    ) {
+      scenario = scenarioParam as Scenario;
+    }
+
     try {
-      const report = await runGitHubHealthReport(repoParam);
-      const normalizedRepo = normalizeRepo(repoParam);
+      console.log(
+        `🌐 HTTP request: repo=${repoParam} mode=${mode} scenario=${scenario} task=${taskParam}`,
+      );
+
+      const report = await runGitHubHealthReport(
+        repoParam,
+        mode,
+        taskParam || undefined,
+        scenario,
+      );
+
       return new Response(
-        JSON.stringify({ repo: normalizedRepo, report }),
-        { headers: { "Content-Type": "application/json" } },
+        JSON.stringify({
+          repo: repoParam,
+          mode,
+          scenario,
+          task: taskParam || undefined,
+          report,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
       );
     } catch (err) {
       console.error("Error analyzing repo:", err);
+      const message =
+        err instanceof Error ? err.message : "Failed to analyze repository";
       return new Response(
-        JSON.stringify({ error: "Failed to analyze repository" }),
+        JSON.stringify({ error: message }),
         { status: 500, headers: { "Content-Type": "application/json" } },
       );
     }
