@@ -18,7 +18,7 @@ if not anthropic_key:
 memory_agent = Mirix(
     api_key=anthropic_key,
     model_provider="anthropic",
-    model="claude-3-sonnet",  # 可以按需要改成别的 Claude 模型
+    model="claude-3-sonnet-20240229",  # 可以按需要改成别的 Claude 模型
 )
 
 class AddMemoryRequest(BaseModel):
