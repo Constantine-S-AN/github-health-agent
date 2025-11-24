@@ -108,6 +108,12 @@ uvicorn mirix_service:app --port 8000 --reload
 Then set `MIRIX_URL` to that endpoint (defaults to `http://127.0.0.1:8000`).
 Local run summaries are also written to `./memory/` (kept out of git); you can clear it safely.
 
+#### How MIRIX is used
+- The Deno agent calls `mirix_service.py` (FastAPI) via `mirix-client.ts`.
+- Each repo name maps to a MIRIX user; summaries of each run are added to MIRIX.
+- Before starting a run, the agent asks MIRIX for a `system_prompt` slice to inject richer context.
+- If `MIRIX_URL` is unset or unreachable, the agent falls back to the local `./memory/` JSON snapshots.
+
 ---
 
 ## Usage – CLI
