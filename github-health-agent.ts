@@ -1,14 +1,3 @@
-// github-health-agent.ts
-// GitHub Health Agent built with Zypher + GitHub MCP + MIRIX-backed memory.
-//
-// CLI 用法：
-//   deno run -A --env-file=.env github-health-agent.ts <owner/repo|url> [--mode=plan|auto] [--scenario=health|backlog|release|custom|chat] [--task="..."] [--daemon]
-//
-// Daemon 模式：
-//   deno run -A --unstable-cron --env-file=.env github-health-agent.ts <owner/repo|url> --mode=auto --scenario=health --daemon
-//
-// Web server 会通过 runGitHubHealthReport 调用（见 web-server.ts）。
-
 import {
   AnthropicModelProvider,
   createZypherContext,
@@ -16,12 +5,7 @@ import {
 } from "@corespeed/zypher";
 import { eachValueFrom } from "rxjs-for-await";
 
-import {
-  fetchMirixMemoryContext,
-  pushMirixMemory,
-} from "./mirix-client.ts";
-
-// --- Types & memory model ---
+import { fetchMirixMemoryContext, pushMirixMemory } from "./mirix-client.ts";
 
 export type HealthMode = "plan" | "auto";
 export type Scenario = "health" | "backlog" | "release" | "custom" | "chat";
@@ -47,8 +31,6 @@ interface RepoMemory {
   episodic?: RepoMemoryEpisode[];
   procedural?: RepoMemoryProcedural;
 }
-
-// --- Helpers ---
 
 function getRequiredEnv(name: string): string {
   const value = Deno.env.get(name);
@@ -94,8 +76,6 @@ export function normalizeRepo(input: string | undefined): string {
 
   throw new Error(`Could not parse GitHub repo from: "${input}"`);
 }
-
-// --- Tiny MIRIX-style memory layer (local JSON snapshot) ---
 
 const MEMORY_DIR = "./memory";
 
@@ -165,7 +145,6 @@ function summarizeMemoryForPrompt(memory: RepoMemory | null): string {
   return lines.join("\n");
 }
 
-// 构造传给 MIRIX 的“对话缓冲”（当前场景 + 本地 summary）
 function buildMirixConversationBuffer(params: {
   repo: string;
   scenario: Scenario;
@@ -190,10 +169,6 @@ function buildMirixConversationBuffer(params: {
   return lines.join("\n");
 }
 
-/**
- * Extract a numeric health score from the agent's final markdown, if present.
- * We expect something like "Health Score: 72/100".
- */
 function extractHealthScore(markdown: string): number | null {
   const match = markdown.match(
     /Health\s*Score[^0-9]*([0-9]{1,3})\s*\/\s*100/i,
@@ -467,7 +442,6 @@ export async function runGitHubHealthReport(
   const memory = await loadRepoMemory(repo);
   const memorySummary = summarizeMemoryForPrompt(memory);
 
-  // Free Chat 场景强制自动模式（写权限）
   let effectiveMode: HealthMode = mode;
   if (scenario === "chat") {
     effectiveMode = "auto";
@@ -501,7 +475,6 @@ export async function runGitHubHealthReport(
     "claude-sonnet-4-20250514",
     undefined,
     {
-      // 尽量多走几轮 agent loop
       maxIterations: 24,
     },
   );
@@ -523,7 +496,6 @@ export async function runGitHubHealthReport(
       case "checkpoint":
       case "checkpoint_restored":
       case "message":
-        // 可以按需记录，目前忽略
         break;
       case "error": {
         console.error("Task error event:", event.error);

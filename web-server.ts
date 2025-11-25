@@ -1,6 +1,3 @@
-// web-server.ts
-// HTTP server exposing the GitHub Health Agent as a web API + static HTML.
-
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import {
   runGitHubHealthReport,

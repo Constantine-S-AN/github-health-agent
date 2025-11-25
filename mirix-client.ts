@@ -1,6 +1,3 @@
-// mirix-client.ts
-// Thin client talking to the local MIRIX memory service.
-
 const MIRIX_BASE_URL = Deno.env.get("MIRIX_URL") ?? "http://127.0.0.1:8000";
 
 async function safeFetchJson(

@@ -7,7 +7,6 @@
   <link href="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.css" rel="stylesheet">
   
   <style>
-    /* --- 核心基础样式 --- */
     * { box-sizing: border-box; }
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -18,25 +17,21 @@
       overflow-x: hidden;
     }
 
-    /* --- 3D 背景容器 --- */
     #canvas-container {
       position: fixed;
       top: 0; left: 0; width: 100%; height: 100%;
       z-index: 0; 
       pointer-events: none;
       transition: all 0.8s ease-in-out;
-      /* 默认深色渐变背景 */
       background: radial-gradient(circle at top, #1f2933 0, #05060a 55%, #000 100%);
     }
 
-    /* 处理模式：背景变纯黑，球体前置 */
     #canvas-container.processing-mode {
       z-index: 9999;
       background: #000;
       opacity: 1;
     }
 
-    /* --- UI 容器 --- */
     .shell { 
       width: 100%; max-width: 1100px; padding: 1.5rem; 
       position: relative; 
@@ -50,7 +45,6 @@
       pointer-events: none;
     }
     
-    /* 卡片风格 */
     .card {
       width: 100%; padding: 1.5rem 1.75rem; border-radius: 18px;
       background: rgba(10, 12, 20, 0.85); 
@@ -65,7 +59,6 @@
     @media (max-width: 900px) { .left { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.06); padding-right: 0; padding-bottom: 1.25rem; } }
     .right { padding-left: 0.5rem; }
 
-    /* 文本与输入框 */
     h1 { margin: 0 0 0.4rem; font-size: 1.5rem; letter-spacing: 0.02em; }
     .subtitle { font-size: 0.85rem; color: #9ca3af; margin-bottom: 1rem; }
     
@@ -88,7 +81,6 @@
       border-color: #4f9cff; box-shadow: 0 0 0 1px rgba(79,156,255,0.6);
     }
 
-    /* 模式切换 */
     .mode-row { display: flex; gap: 0.9rem; flex-wrap: wrap; margin-top: 0.15rem; }
     .mode-pill {
       display: inline-flex; align-items: center; gap: 0.35rem;
@@ -102,7 +94,6 @@
     .mode-pill input { margin: 0; display: none; }
     .mode-note { font-size: 0.7rem; color: #9ca3af; margin-top: 0.25rem; }
 
-    /* 按钮 */
     button {
       margin-top: 0.8rem; padding: 0.55rem 1.1rem; border-radius: 999px; border: none;
       cursor: pointer; background: linear-gradient(120deg, #4f9cff, #38bdf8);
@@ -113,18 +104,15 @@
     button:active { transform: scale(0.98); }
     button:disabled { opacity: 0.65; cursor: default; box-shadow: none; transform: none; }
 
-    /* 结果输出 */
     #status { margin-top: 0.6rem; font-size: 0.8rem; color: #9ca3af; white-space: pre-wrap; }
     #output { margin-top: 0.25rem; padding: 0.85rem; border-radius: 12px; background: rgba(15,23,42,0.9); color: #e5e5e5; max-height: 65vh; overflow: auto; font-size: 0.88rem; }
     
-    /* Mermaid & Markdown */
     .mermaid { background: #020617; padding: 1rem; border-radius: 8px; margin: 1rem 0; text-align: center; }
     #output .md-block { white-space: pre-wrap; word-break: break-word; margin: 0.3rem 0; }
     #output h1, #output h2, #output h3 { margin: 0.4rem 0 0.3rem; color: #e5e7eb; }
     #output ul { padding-left: 1.2rem; color: #cbd5f5; }
     #output strong { color: #38bdf8; }
 
-    /* --- 加载提示文字 --- */
     #loading-overlay-text {
       position: fixed;
       top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -143,7 +131,7 @@
 </head>
 <body>
 
-  <div id="canvas-container"></div> 
+  <div id="canvas-container"></div>
   
   <div id="loading-overlay-text">Analyzing Repository Data...</div>
 
@@ -218,7 +206,6 @@
   </div>
 
   <script>
-    // 定义全局函数
     window.setProcessingState = function() {};
     window.setScoreColor = function() {};
 
@@ -235,17 +222,14 @@
       renderer.setPixelRatio(window.devicePixelRatio);
       container.appendChild(renderer.domElement);
 
-      // --- 颜色定义 ---
       const COLOR_DEFAULT = new THREE.Color(0x4f9cff); // 蓝 (默认)
       const COLOR_GOOD    = new THREE.Color(0x00ff9d); // 绿 (80+)
       const COLOR_WARN    = new THREE.Color(0xffae00); // 橙 (50-79)
       const COLOR_BAD     = new THREE.Color(0xff4444); // 红 (<50)
 
-      // 当前颜色和目标颜色
       let currentColor = COLOR_DEFAULT.clone();
       let targetColor  = COLOR_DEFAULT.clone();
 
-      // 创建球体网络
       const geometry = new THREE.IcosahedronGeometry(220, 1);
       
       const wireframeMaterial = new THREE.MeshBasicMaterial({ 
@@ -273,7 +257,6 @@
           mouseY = (event.clientY - window.innerHeight / 2) * 0.0005;
       });
 
-      // --- 1. 设置处理状态 (加速) ---
       window.setProcessingState = function(isProcessing) {
         if (isProcessing) {
           targetRotSpeed = 0.05; // 加速
@@ -288,7 +271,6 @@
         }
       };
 
-      // --- 2. 设置结果颜色 (根据分数) ---
       window.setScoreColor = function(score) {
         console.log("Setting color for score:", score);
         if (score === null || score === undefined) {
@@ -305,17 +287,13 @@
       function animate() {
           requestAnimationFrame(animate);
 
-          // 平滑插值旋转速度
           currentRotSpeed += (targetRotSpeed - currentRotSpeed) * 0.05;
           group.rotation.y += currentRotSpeed;
           group.rotation.x += currentRotSpeed * 0.5;
 
-          // 平滑插值颜色 change
-          // lerp (目标, 速度)
           wireframeMaterial.color.lerp(targetColor, 0.05);
           pointsMaterial.color.lerp(targetColor, 0.05);
 
-          // 鼠标交互
           if (targetRotSpeed < 0.01) {
             group.rotation.y += mouseX * 0.05;
             group.rotation.x += mouseY * 0.05;
@@ -348,7 +326,6 @@
     const statusEl = document.getElementById("status");
     const output = document.getElementById("output");
     
-    // UI Elements
     const uiShell = document.getElementById("ui-shell");
     const canvasContainer = document.getElementById("canvas-container");
     const loadingText = document.getElementById("loading-overlay-text");
@@ -371,7 +348,6 @@
     pillAuto.addEventListener("click", (e) => { if(e.target !== radioAuto) radioAuto.checked = true; updateModeUI(); });
     function getMode() { return radioAuto.checked ? "auto" : "plan"; }
 
-    // --- 提取分数 ---
     function extractHealthScore(text) {
       // 尝试匹配 "Health Score: 85" 或 "Score: 85" 或 "Score: **85**"
       // 忽略大小写
@@ -383,7 +359,6 @@
       return null;
     }
 
-    // --- Start Scan ---
     async function analyze() {
       const repo = repoInput.value.trim();
       if (!repo) {
@@ -396,12 +371,10 @@
       let mode = getMode();
       if (scenario === "chat") mode = "auto";
 
-      // 1. 进入沉浸式模式
       uiShell.classList.add("hidden");
       canvasContainer.classList.add("processing-mode");
       loadingText.classList.add("visible");
       
-      // 3D 效果：加速，重置颜色为默认
       window.setProcessingState(true);
       window.setScoreColor(null); 
 
@@ -416,7 +389,6 @@
         const url = "/api/health?" + params.toString();
         const res = await fetch(url);
         
-        // 强制等待 1.5 秒，让动画飞一会儿
         await new Promise(r => setTimeout(r, 1500));
 
         if (!res.ok) {
@@ -426,7 +398,6 @@
         }
         const data = await res.json();
         
-        // 2. 退出沉浸模式，展示结果
         uiShell.classList.remove("hidden");
         canvasContainer.classList.remove("processing-mode");
         loadingText.classList.remove("visible");
@@ -434,16 +405,13 @@
 
         statusEl.textContent = `Done. Repo: ${data.repo} · Scenario: ${data.scenario} · Mode: ${data.mode}`;
         
-        // 渲染 Markdown
         renderMarkdownWithMermaid(data.report);
 
-        // 3. 提取分数并变色 🎨
         const score = extractHealthScore(data.report);
         if (score !== null) {
           statusEl.innerHTML += ` <span style="color:#fff; background:#333; padding:2px 6px; border-radius:4px;">Score: ${score}</span>`;
           window.setScoreColor(score); // 触发变色
         } else {
-           // 如果没找到分数，保持默认
            window.setScoreColor(null);
         }
 
@@ -451,12 +419,10 @@
         console.error(err);
         statusEl.textContent = "Error: " + err.message;
         
-        // 出错时恢复 UI
         uiShell.classList.remove("hidden");
         canvasContainer.classList.remove("processing-mode");
         loadingText.classList.remove("visible");
         window.setProcessingState(false);
-        // 出错变红
         window.setScoreColor(0); 
       } finally {
         button.disabled = false;
