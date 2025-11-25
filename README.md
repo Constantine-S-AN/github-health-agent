@@ -1,4 +1,4 @@
-为 Web UI 增加了 场景选择器：Health / Backlog Cleanup / Release Prep / Custom Task / Free Chat。
+为 Web UI 增加了 场景选择器并且定制化：Health / Backlog Cleanup / Release Prep / Custom Task / Free Chat。
 
 增加了 自然语言任务输入框，支持用户直接输入指令（如 Create "Repository Health Initiative" umbrella issue）。
 
