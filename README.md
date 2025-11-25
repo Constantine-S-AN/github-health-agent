@@ -1,3 +1,45 @@
+为 Web UI 增加了 场景选择器：Health / Backlog Cleanup / Release Prep / Custom Task / Free Chat。
+
+增加了 自然语言任务输入框，支持用户直接输入指令（如 Create "Repository Health Initiative" umbrella issue）。
+
+后端 github-health-agent.ts 重写了任务构造逻辑，统一走 Plan → Act → Observe → Re-plan 的 agent loop，并在输出中增加 Agent Loop Log 和 Auto-Fix Log。
+
+接入 Mirix 记忆服务，并在本地按 repo 维护 episodic memory JSON，支持同一仓库多次运行时读取历史健康记录。
+
+Web UI 增加对 ```mermaid 代码块的解析和渲染，用于展示 饼图 / Gantt 图。
+
+命令行入口和 HTTP API 支持 mode（plan/auto）、scenario、task 参数
+
+web UI 更好看了！！！
+
+
+现在可以直接在页面中：
+
+选择场景（例如 Backlog Cleanup），
+
+输入自然语言任务，
+
+用 Auto 模式让 Agent 自动检查 issues，并按需求创建 umbrella issue / 打标签 / 评论。
+
+输出报告中会包含：
+
+当前这次分析的可视化结果（Mermaid 图），
+
+未来两周的任务 Gantt，
+
+Agent 每一轮 Plan/Act/Observe 的日志，
+
+实际对 GitHub 做了哪些写操作，方便在 GitHub 界面核对结果。
+
+
+
+这个版本从一次性问答脚本，升级成一个有记忆、有执行力的 true agent。它支持 Health / Backlog / Release / Custom / Free Chat 五种场景，能理解自然语言任务，通过 Zypher + MCP 主动调用 GitHub API，自动创建 umbrella issue、打标签、发评论，真正参与仓库维护。借助 Mirix 记忆和本地 episodic memory，同一个 repo 的多次运行会串成一条连续的健康轨迹(long term memory!)，而不是每次从零开始。
+
+
+
+
+
+
 # GitHub Health Agent (Zypher + MCP + MIRIX)
 
 A small **GitHub repository health assistant** built with [Zypher](https://zypher.corespeed.io).
