@@ -1,3 +1,4 @@
+// GitHub Health Agent entrypoint (CLI + web) with Zypher, GitHub MCP, and MIRIX-backed memory.
 import {
   AnthropicModelProvider,
   createZypherContext,
@@ -447,7 +448,7 @@ export async function runGitHubHealthReport(
     effectiveMode = "auto";
   }
 
-  // 先构造 conversation buffer 给 MIRIX 做检索
+  // Build conversation buffer for MIRIX retrieval (fallback to local memory if unavailable)
   const mirixConversation = buildMirixConversationBuffer({
     repo,
     scenario,

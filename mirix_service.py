@@ -1,3 +1,4 @@
+"""MIRIX FastAPI shim using Anthropic Claude for memory retrieval."""
 from fastapi import FastAPI
 from pydantic import BaseModel
 from mirix import Mirix

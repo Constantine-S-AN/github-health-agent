@@ -1,3 +1,4 @@
+// Thin client for the MIRIX FastAPI service; falls back to local memory when unavailable.
 const MIRIX_BASE_URL = Deno.env.get("MIRIX_URL") ?? "http://127.0.0.1:8000";
 
 async function safeFetchJson(
