@@ -1,0 +1,83 @@
+name: ❓ Question or Support
+description: Ask a question about usage, setup, or get general help
+title: "[QUESTION]: "
+labels: ["question"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have a question about the GitHub Health Agent? Need help with setup or usage? We're here to help!
+        
+        Before submitting, please check:
+        - [README.md](https://github.com/Constantine-S-AN/github-health-agent/blob/main/README.md) for setup and usage instructions
+        - [CONTRIBUTING.md](https://github.com/Constantine-S-AN/github-health-agent/blob/main/CONTRIBUTING.md) for development guidelines
+        - Existing [issues](https://github.com/Constantine-S-AN/github-health-agent/issues) for similar questions
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Question Category
+      description: What type of help do you need?
+      options:
+        - Setup & Installation
+        - Usage & Configuration
+        - Health Scoring & Analysis
+        - MIRIX Memory Service
+        - Web Interface
+        - CLI Usage
+        - API Integration
+        - Deployment & Docker
+        - Troubleshooting
+        - General Question
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: What would you like to know?
+      placeholder: Please be as specific as possible. Include context about what you're trying to achieve.
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context & Details
+      description: Provide relevant background information
+      placeholder: |
+        - What are you trying to accomplish?
+        - What have you tried so far?
+        - What specific behavior or output are you seeing?
+        - Any relevant configuration or environment details?
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment (if relevant)
+      description: System and version information
+      placeholder: |
+        - OS: (e.g., macOS 14.0, Ubuntu 22.04, Windows 11)
+        - Deno version: (output of `deno --version`)
+        - How you're running the agent: (CLI, web interface, Docker)
+
+  - type: textarea
+    id: attempted_solutions
+    attributes:
+      label: What Have You Tried?
+      description: What troubleshooting steps or solutions have you already attempted?
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please verify the following before submitting
+      options:
+        - label: I have checked the README and CONTRIBUTING documentation
+          required: true
+        - label: I have searched existing issues for similar questions
+          required: true
+        - label: I have provided sufficient context and details
+          required: true
