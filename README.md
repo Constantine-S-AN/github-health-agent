@@ -6,7 +6,7 @@
 
 接入 Mirix 记忆服务，并在本地按 repo 维护 episodic memory JSON，支持同一仓库多次运行时读取历史健康记录。
 
-Web UI 增加对 ```mermaid 代码块的解析和渲染，用于展示 饼图 / Gantt 图。
+Web UI 增加对 mermaid 代码块的解析和渲染，用于展示 饼图 / Gantt 图。
 
 命令行入口和 HTTP API 支持 mode（plan/auto）、scenario、task 参数
 
