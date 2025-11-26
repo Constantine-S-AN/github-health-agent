@@ -1,5 +1,4 @@
 // Minimal HTTP server for the web UI and /api/health endpoint.
-
 // NOTE: no std "serve" import needed; we'll use Deno.serve so this works
 // both locally and on Railway / Deno Deploy.
 
@@ -37,7 +36,10 @@ const handler = async (req: Request): Promise<Response> => {
     if (!repoParam) {
       return new Response(
         JSON.stringify({ error: "Missing 'repo' query parameter" }),
-        { status: 400, headers: { "Content-Type": "application/json" } },
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -58,7 +60,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     try {
       console.log(
-        `🌐 HTTP request: repo=${repoParam} mode=${mode} scenario=${scenario} task=${taskParam}`,
+        `HTTP request: repo=${repoParam} mode=${mode} scenario=${scenario} task=${taskParam}`,
       );
 
       const report = await runGitHubHealthReport(
@@ -80,7 +82,10 @@ const handler = async (req: Request): Promise<Response> => {
           null,
           2,
         ),
-        { status: 200, headers: { "Content-Type": "application/json" } },
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
       );
     } catch (err) {
       console.error("Error analyzing repo:", err);
@@ -88,7 +93,10 @@ const handler = async (req: Request): Promise<Response> => {
         err instanceof Error ? err.message : "Failed to analyze repository";
       return new Response(
         JSON.stringify({ error: message }),
-        { status: 500, headers: { "Content-Type": "application/json" } },
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        },
       );
     }
   }
@@ -97,7 +105,6 @@ const handler = async (req: Request): Promise<Response> => {
 };
 
 const port = Number(Deno.env.get("PORT") ?? "8000");
-
 console.log(`Web server running at http://localhost:${port}`);
 
 Deno.serve({ port }, handler);
