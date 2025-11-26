@@ -1,0 +1,335 @@
+为 Web UI 增加了 场景选择器并且定制化：Health / Backlog Cleanup / Release Prep / Custom Task / Free Chat。
+
+增加了 自然语言任务输入框，支持用户直接输入指令（如 Create "Repository Health Initiative" umbrella issue）。
+
+后端 github-health-agent.ts 重写了任务构造逻辑，统一走 Plan → Act → Observe → Re-plan 的 agent loop，并在输出中增加 Agent Loop Log 和 Auto-Fix Log。
+
+接入 Mirix 记忆服务，并在本地按 repo 维护 episodic memory JSON，支持同一仓库多次运行时读取历史健康记录。
+
+Web UI 增加对 mermaid 代码块的解析和渲染，用于展示 饼图 / Gantt 图。
+
+命令行入口和 HTTP API 支持 mode（plan/auto）、scenario、task 参数
+
+web UI 更好看了！！！
+
+
+现在可以直接在页面中：
+
+选择场景（例如 Backlog Cleanup），
+
+输入自然语言任务，
+
+用 Auto 模式让 Agent 自动检查 issues，并按需求创建 umbrella issue / 打标签 / 评论。
+
+输出报告中会包含：
+
+当前这次分析的可视化结果（Mermaid 图），
+
+未来两周的任务 Gantt，
+
+Agent 每一轮 Plan/Act/Observe 的日志，
+
+实际对 GitHub 做了哪些写操作，方便在 GitHub 界面核对结果。
+
+
+
+这个版本从一次性问答脚本，升级成一个有记忆、有执行力的 true agent。它支持 Health / Backlog / Release / Custom / Free Chat 五种场景，能理解自然语言任务，通过 Zypher + MCP 主动调用 GitHub API，自动创建 umbrella issue、打标签、发评论，真正参与仓库维护。借助 Mirix 记忆和本地 episodic memory，同一个 repo 的多次运行会串成一条连续的健康轨迹(long term memory!)，而不是每次从零开始。
+
+
+
+
+
+
+# GitHub Health Agent (Zypher + MCP + MIRIX)
+
+A small **GitHub repository health assistant** built with [Zypher](https://zypher.corespeed.io).
+
+The agent can be used in two ways:
+
+- As a **CLI tool**: pass a GitHub repo, get back a Markdown health report.
+- As a **web app**: open a local web page, type a repo, and see the report in your browser.
+
+Under the hood it uses the **GitHub MCP server** and **Anthropic Claude** via Zypher to inspect a repo's issues / activity and generate a **0–100 health score** plus concrete maintenance recommendations. It can also stream / store run history via a MIRIX memory service so each run has long-term context.
+
+---
+
+## Features
+
+- 🔍 Accepts `owner/repo` or a full GitHub URL  
+- 🧰 Uses the `github-mcp` server to query issues, PRs, and activity  
+- 🧮 Computes a 0–100 **Health Score** based on activity, backlog, and maintenance signals  
+- 🧾 Outputs a structured **Markdown report** with:
+  - Health Score
+  - Indicators (activity, issues, releases)
+  - Risks
+  - Recommended Next Actions
+- 🖥️ Simple web UI (Deno HTTP server + static HTML) on `http://localhost:8000`
+- 🧠 Optional MIRIX backing store for run history + prompts
+- 🔀 Modes: `plan` (read-only) or `auto` (janitor-style write actions when allowed)
+- 🎯 Scenarios: `health`, `backlog`, `release`, `custom`, `chat`
+- ⏰ Daemon mode with cron to re-run daily
+
+---
+
+## Tech Stack
+
+- **Runtime:** [Deno 2.x](https://deno.land/)  
+- **Agent framework:** [`@corespeed/zypher`](https://zypher.corespeed.io)  
+- **LLM provider:** Anthropic Claude (`AnthropicModelProvider`)  
+- **MCP tools:** GitHub MCP server (`github-mcp`)  
+- **Event streaming:** `rxjs-for-await`  
+- **Web server:** Deno `std/http/server.ts`  
+- **Frontend:** Single `index.html` (vanilla JS + minimal CSS)
+
+---
+
+## Setup
+
+### 1. Install Deno
+
+If you don't have Deno yet:
+
+```bash
+curl -fsSL https://deno.land/install.sh | sh
+````
+
+Restart your shell and verify:
+
+```bash
+deno --version
+```
+
+### 2. Clone this project
+
+```bash
+git clone https://github.com/Constantine-S-AN/github-health-agent.git
+cd github-health-agent
+```
+
+### 3. Dependencies
+
+Deno will pull dependencies automatically from `deno.json` / imports.
+For reference, this project uses:
+
+```bash
+deno add jsr:@corespeed/zypher
+deno add npm:rxjs-for-await
+```
+
+### 4. Environment variables
+
+Create a `.env` file in the project root:
+
+```env
+ANTHROPIC_API_KEY=your_anthropic_key_here
+GITHUB_TOKEN=your_github_pat_here
+GITHUB_ACCESS_TOKEN=your_github_pat_here
+GITHUB_PERSONAL_ACCESS_TOKEN=your_github_pat_here
+MIRIX_URL=http://127.0.0.1:8000           # optional; only if using the MIRIX memory service
+```
+
+Notes:
+
+* `ANTHROPIC_API_KEY` is used by the Zypher `AnthropicModelProvider`.
+* All three `GITHUB_*` vars can point to the **same** GitHub Personal Access Token (PAT).
+* The PAT only needs **read** access to the repos you want to inspect.
+  For public repos, the `public_repo` (or `repo`) scope is sufficient.
+* `MIRIX_URL` is optional; if unset, the agent falls back to local JSON snapshots in `./memory/`.
+
+> ⚠️ **Important:** `.env` is in `.gitignore` and should never be committed.
+
+### 5. (Optional) Run the MIRIX memory service
+
+If you want cloud-like episodic memory across runs, start the included Python FastAPI shim:
+
+```bash
+pip install fastapi uvicorn python-dotenv mirix
+uvicorn mirix_service:app --port 8000 --reload
+```
+
+Then set `MIRIX_URL` to that endpoint (defaults to `http://127.0.0.1:8000`).
+Local run summaries are also written to `./memory/` (kept out of git); you can clear it safely.
+
+#### How MIRIX is used
+- The Deno agent calls `mirix_service.py` (FastAPI) via `mirix-client.ts`.
+- Each repo name maps to a MIRIX user; summaries of each run are added to MIRIX.
+- Before starting a run, the agent asks MIRIX for a `system_prompt` slice to inject richer context.
+- If `MIRIX_URL` is unset or unreachable, the agent falls back to the local `./memory/` JSON snapshots.
+
+---
+
+## Usage – CLI
+
+You can still run the agent directly from the command line.
+
+### Basic CLI usage
+
+```
+deno run -A --env-file=.env github-health-agent.ts <owner/repo|url> \
+  [--mode=plan|auto] \
+  [--scenario=health|backlog|release|custom|chat] \
+  [--task="high priority instruction"] \
+  [--daemon]   # requires --unstable-cron
+```
+
+Examples:
+
+```bash
+# Analyze the Zypher repo in plan mode
+deno run -A --env-file=.env github-health-agent.ts corespeedio/zypher --mode=plan
+
+# Backlog cleanup scenario in auto mode (write actions allowed)
+deno run -A --env-file=.env github-health-agent.ts scribear/ScribeAR.github.io --mode=auto --scenario=backlog
+
+# Daily daemon
+deno run -A --unstable-cron --env-file=.env github-health-agent.ts scribear/ScribeAR.github.io --mode=auto --daemon
+```
+
+### Using full GitHub URLs
+
+The agent normalizes URLs to `owner/repo`, so this also works:
+
+```bash
+deno run -A --env-file=.env github-health-agent.ts https://github.com/scribear/ScribeAR.github.io
+```
+
+---
+
+## Usage – Web App
+
+The project also includes a tiny web front end that calls the same agent through a JSON API.
+
+### Start the web server
+
+```bash
+deno run -A --env-file=.env web-server.ts
+```
+
+You should see:
+
+```text
+🌐 Web server running at http://localhost:8000
+```
+
+### Open the UI
+
+1. Open your browser and go to: [http://localhost:8000](http://localhost:8000)
+2. Enter a repo (e.g. `scribear/ScribeAR.github.io` or a full URL).
+3. Pick a scenario and mode (plan/auto), optionally add a task.
+4. Click **Analyze** or press **Enter**.
+5. A Markdown report + Mermaid charts will appear in the right pane, and the background orb will reflect the health score.
+
+---
+
+## HTTP API
+
+The web server exposes a simple JSON API:
+
+**Endpoint**
+
+```http
+GET /api/health?repo=<owner/repo or URL>&mode=plan|auto&scenario=health|backlog|release|custom|chat&task=...
+```
+
+**Response**
+
+```json
+{
+  "repo": "normalized/owner/repo",
+  "report": "<markdown health report>"
+}
+```
+
+**Example**
+
+```bash
+curl "http://localhost:8000/api/health?repo=scribear/ScribeAR.github.io"
+```
+
+---
+
+## What the Agent Does
+
+For a given repository, the agent:
+
+1. Uses GitHub MCP tools (e.g. `github_list_issues`, and others as needed) to fetch data.
+2. Gathers key signals such as:
+
+   * Number of open issues and pull requests
+   * Commit / PR activity in the last ~30 days
+   * Presence (or absence) of recent releases or tags
+   * Age and backlog of open issues
+3. Computes a **0–100 Health Score**, using a simple weighted scheme over:
+
+   * Recent activity
+   * Issue / PR management
+   * Release cadence
+   * Community / maintenance signals
+4. Produces a **Markdown report** with four sections:
+
+   * **Health Score** – one number + short summary
+   * **Indicators** – bullets for activity, backlog, maintenance
+   * **Risks** – potential problems (stale issues, UX debt, etc.)
+   * **Recommended Next Actions** – 3–5 concrete steps for maintainers
+
+The report is printed to stdout in CLI mode and returned as `report` in the web/API mode.
+
+---
+
+## Example Output (Truncated)
+
+For:
+
+```bash
+deno run -A --env-file=.env github-health-agent.ts scribear/ScribeAR.github.io
+```
+
+Sample output (shortened):
+
+```text
+🔍 Analyzing GitHub repo: scribear/ScribeAR.github.io
+
+🛠  Using tool: github_list_issues
+
+💬 Agent report:
+
+## Health Score: 72/100
+The repository shows moderate health with active development but a noticeable backlog of open issues.
+
+## Indicators
+- Recent PRs merged in Oct–Nov 2025
+- 23 open issues, 200+ closed
+- Some issues dating back to 2023–2024 (backlog risk)
+
+## Risks
+- Long-lived feature requests and bug reports
+- Browser compatibility and mobile UI issues
+- No formal release tagging or versioning strategy
+
+## Recommended Next Actions
+1. Run an issue triage sprint to clean up stale items.
+2. Establish a simple release cadence with semantic versioning.
+3. Prioritize mobile responsiveness and browser compatibility.
+4. Turn old enhancement issues into scoped implementation tasks.
+5. Document a basic maintenance and release checklist.
+
+✅ GitHub health analysis completed!
+```
+
+---
+
+## Future Improvements
+
+Some ideas for extending this agent:
+
+* Inspect code-level signals (test coverage, static analysis, dependency freshness).
+* Analyze **multiple repos in one run** and summarize portfolio health.
+* Add a richer front end (charts, trend lines, filters).
+* Expose the agent as a hosted service or GitHub App for automated checks.
+
+---
+
+## Credits
+
+* Built with [Zypher](https://zypher.corespeed.io) and the GitHub MCP server.
+* Developed as a small vertical agent to explore **agent-native infrastructure** for developer tooling, with both CLI and web entrypoints.

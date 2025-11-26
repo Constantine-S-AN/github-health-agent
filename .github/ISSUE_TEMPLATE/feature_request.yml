@@ -1,0 +1,113 @@
+name: 🚀 Feature Request
+description: Suggest a new feature or enhancement for the GitHub Health Agent
+title: "[FEATURE]: "
+labels: ["enhancement"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a new feature! Please provide details about your idea to help us understand and evaluate it.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component Area
+      description: Which area would this feature primarily affect?
+      options:
+        - Health scoring algorithm
+        - CLI interface
+        - Web interface
+        - GitHub API integration
+        - MIRIX memory service
+        - Reporting & visualization
+        - Deployment & containerization
+        - Documentation
+        - Testing & CI/CD
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem would this feature solve? What's the current pain point?
+      placeholder: Describe the current limitation or gap that this feature would address...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe your proposed feature or enhancement
+      placeholder: |
+        What should this feature do? How should it work?
+        
+        Example:
+        - Add new health metric for documentation coverage
+        - Provide visual charts for issue trends
+        - Support batch analysis of multiple repositories
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions
+      description: Have you considered any alternative approaches?
+      placeholder: Describe any alternative solutions or workarounds you've considered...
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority Level
+      description: How important is this feature to you?
+      options:
+        - Critical - Blocks my primary use case
+        - High - Significantly improves my workflow
+        - Medium - Nice to have improvement
+        - Low - Minor enhancement
+    validations:
+      required: true
+
+  - type: textarea
+    id: use_cases
+    attributes:
+      label: Use Cases & Examples
+      description: Provide specific examples of how this feature would be used
+      placeholder: |
+        1. As a team lead, I want to track documentation coverage so I can prioritize docs work
+        2. As a maintainer, I want to batch analyze all my repositories to get a portfolio health overview
+        3. As a developer, I want visual charts to understand issue trends over time
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria (Optional)
+      description: What would make this feature complete? How would you test it?
+      placeholder: |
+        - [ ] Feature calculates documentation coverage percentage
+        - [ ] Results are displayed in health report
+        - [ ] Works with both CLI and web interface
+        - [ ] Handles edge cases (no docs, private repos, etc.)
+
+  - type: textarea
+    id: technical_notes
+    attributes:
+      label: Technical Implementation Notes (Optional)
+      description: Any technical considerations, constraints, or implementation ideas?
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please verify the following before submitting
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate
+          required: true
+        - label: I have clearly described the problem and proposed solution
+          required: true
+        - label: I have provided specific use cases or examples
+          required: true

@@ -1,0 +1,114 @@
+name: 🐛 Bug Report
+description: Report a bug or issue with the GitHub Health Agent
+title: "[BUG]: "
+labels: ["bug"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to report a bug! Please provide as much detail as possible to help us reproduce and fix the issue.
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: What version of GitHub Health Agent are you using?
+      placeholder: Latest commit SHA or release version
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which component is affected?
+      options:
+        - CLI tool
+        - Web interface
+        - Health scoring logic
+        - GitHub API integration
+        - MIRIX memory service
+        - Web server
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of the bug
+      placeholder: What happened? What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Step-by-step instructions to reproduce the issue
+      placeholder: |
+        1. Run command: `deno run -A --env-file=.env github-health-agent.ts owner/repo`
+        2. Navigate to web interface at localhost:8000
+        3. Enter repository URL
+        4. Click analyze
+        5. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should have happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened? Include error messages if any.
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment Details
+      description: Information about your setup
+      placeholder: |
+        - OS: (e.g., macOS 14.0, Ubuntu 22.04, Windows 11)
+        - Deno version: (output of `deno --version`)
+        - Node.js version (if using MIRIX): (output of `node --version`)
+        - GitHub token permissions: (e.g., public_repo, repo)
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs or Error Output
+      description: Please copy and paste any relevant log output or error messages
+      render: shell
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here (screenshots, related issues, etc.)
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please verify the following before submitting
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate
+          required: true
+        - label: I have included all relevant environment details
+          required: true
+        - label: I have provided clear reproduction steps
+          required: true
