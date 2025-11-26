@@ -1,21 +1,22 @@
 // Minimal HTTP server for the web UI and /api/health endpoint.
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+
+// NOTE: no std "serve" import needed; we'll use Deno.serve so this works
+// both locally and on Railway / Deno Deploy.
+
 import {
   runGitHubHealthReport,
   type HealthMode,
   type Scenario,
 } from "./github-health-agent.ts";
 
-const PORT = 8000;
-
 const handler = async (req: Request): Promise<Response> => {
   const url = new URL(req.url);
 
+  // Serve the main web UI
   if (url.pathname === "/") {
     try {
-      const html = await Deno.readTextFile(
-        new URL("./index.html", import.meta.url),
-      );
+      const htmlUrl = new URL("./index.html", import.meta.url);
+      const html = await Deno.readTextFile(htmlUrl);
       return new Response(html, {
         status: 200,
         headers: { "Content-Type": "text/html; charset=utf-8" },
@@ -26,6 +27,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
   }
 
+  // JSON API endpoint: /api/health
   if (url.pathname === "/api/health") {
     const repoParam = url.searchParams.get("repo");
     const modeParam = url.searchParams.get("mode") ?? "plan";
@@ -39,13 +41,16 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    let mode: HealthMode = "plan";
-    if (modeParam === "auto") mode = "auto";
+    // mode: "plan" | "auto"
+    const mode: HealthMode = modeParam === "auto" ? "auto" : "plan";
 
+    // scenario: validate the string before casting
     let scenario: Scenario = "health";
     if (
-      scenarioParam === "health" || scenarioParam === "backlog" ||
-      scenarioParam === "release" || scenarioParam === "custom" ||
+      scenarioParam === "health" ||
+      scenarioParam === "backlog" ||
+      scenarioParam === "release" ||
+      scenarioParam === "custom" ||
       scenarioParam === "chat"
     ) {
       scenario = scenarioParam as Scenario;
@@ -64,13 +69,17 @@ const handler = async (req: Request): Promise<Response> => {
       );
 
       return new Response(
-        JSON.stringify({
-          repo: repoParam,
-          mode,
-          scenario,
-          task: taskParam || undefined,
-          report,
-        }),
+        JSON.stringify(
+          {
+            repo: repoParam,
+            mode,
+            scenario,
+            task: taskParam || undefined,
+            report,
+          },
+          null,
+          2,
+        ),
         { status: 200, headers: { "Content-Type": "application/json" } },
       );
     } catch (err) {
@@ -87,5 +96,8 @@ const handler = async (req: Request): Promise<Response> => {
   return new Response("Not found", { status: 404 });
 };
 
-console.log(`🌐 Web server running at http://localhost:${PORT}`);
-serve(handler, { port: PORT });
+const port = Number(Deno.env.get("PORT") ?? "8000");
+
+console.log(`Web server running at http://localhost:${port}`);
+
+Deno.serve({ port }, handler);
